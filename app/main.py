@@ -1,25 +1,30 @@
 from fastapi import FastAPI,HTTPException
-from app.model_schema import TicketCreate, TicketResponse,TicketPredictRequest, TicketPredictResponse
+from app.model_schema import TicketCreate, TicketResponse
 from app.model_loader import load_artifacts
 from app.predictor import predict_ticket
 from app.decision_enginer import transfer_to_team
 from datetime import datetime, timezone
-from app.ticket_storage import (
-    add_ticket,
-    get_all_tickets,
-    get_ticket_by_id
-)
-
+from app.ticket_storage import add_ticket,get_all_tickets,get_ticket_by_id
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 artifacts = load_artifacts()
 
 app = FastAPI(title="Customer support Ticketing System")
 
-@app.get("/")
-async def read_root():
-    return {"message": "Welcome to the Customer Support Ticketing System",
-            "teams": ['product_team','success_team','engineering','billing_team','compliance_team','auth_team'],
-            "urgency_levels": ['low', 'medium', 'high','critical']}
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+app.mount(
+    "/templates",
+    StaticFiles(directory=BASE_DIR / "templates"),
+    name="templates"
+)
+
+
+@app.get("/", include_in_schema=False)
+async def ticket_ui():
+    return FileResponse(BASE_DIR / "templates" / "ticket.html")
 
 @app.post("/tickets/",response_model=TicketResponse)
 async def create_ticket(ticket: TicketCreate):
@@ -35,14 +40,13 @@ async def create_ticket(ticket: TicketCreate):
                 "channel": ticket.channel,
                 "subject": ticket.subject,
                 "issue_description": ticket.issue_description,
-                "priority": prediction["urgency"],
+                "urgency": prediction["urgency"],
                 "customer_tier": "standard",
                 "resolution_status": "open",
                 "created_at": current_time,
                 "updated_at": current_time,
                 "language": "en",
                 "category": prediction["category"],
-                "urgency": prediction["urgency"],
                 "assigned_team": transfer_to_team(prediction["category"])}
         saved_ticket = add_ticket(new_ticket)
         return saved_ticket

@@ -15,7 +15,6 @@ class TicketResponse(BaseModel):
     channel: str
     subject: str
     issue_description: str
-    priority: str
     customer_tier: str
     resolution_status: str
     created_at: str
