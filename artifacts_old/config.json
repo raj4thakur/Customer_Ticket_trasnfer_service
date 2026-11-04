@@ -1,0 +1,19 @@
+{
+    "max_text_len": 273,
+    "padding": "post",
+    "text_combination": "subject + ' ' + body",
+    "category_classes": [
+        "account_access",
+        "billing_cancellation",
+        "complaint_and_query",
+        "data_privacy",
+        "feature_request",
+        "technical_issue"
+    ],
+    "urgency_classes": [
+        "critical",
+        "high",
+        "low",
+        "medium"
+    ]
+}

@@ -34,6 +34,8 @@ async def create_ticket(ticket: TicketCreate):
            subject=ticket.subject,
               body=ticket.issue_description,
               artifacts=artifacts)
+        print(f"catergory:{prediction['category']}, Confidence:{prediction['category_confidence']}")
+        print(f"Urgency:{prediction['urgency']}, Confidence:{prediction['urgency_confidence']}")
         new_ticket = {
            "ticket_id": 1,
               "customer_id": ticket.customer_id,
