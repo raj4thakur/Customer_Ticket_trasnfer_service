@@ -1,9 +1,6 @@
 
 import numpy as np
 
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-
-
 # def predict_ticket(subject, body, artifacts):
 #     model = artifacts["model"]
 #     tokenizer = artifacts["tokenizer"]

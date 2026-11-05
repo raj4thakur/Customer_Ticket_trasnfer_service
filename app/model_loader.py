@@ -4,7 +4,6 @@ import joblib
 import tensorflow as tf
 
 from pathlib import Path
-from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
 
 # Project root directory

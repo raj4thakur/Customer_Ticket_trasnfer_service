@@ -1,65 +1,76 @@
-import json
-import threading
-from pathlib import Path
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-TICKETS_FILE = DATA_DIR / "tickets.json"
+DB_CONFIG = {
+    "host": "localhost",
+    "database": "postgres",
+    "user": "postgres",
+    "password": "Raj@Emaster"
+}
 
-# Prevent simultaneous requests from writing to the file at the same time.
-_file_lock = threading.Lock()
+def add_ticket(ticket: dict):
+    conn = None
+    cursor = None
 
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        query = """
+        INSERT INTO tickets (
+            subject,
+            body,
+            channel,
+            customer_tier,
+            created_at,
+            category,
+            urgency,
+            assigned_team,
+            language,
+            resolution_status
+        )
+        VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        RETURNING *;
+        """
 
-def load_tickets():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+        cursor.execute(
+            query,
+            (
+                ticket["subject"],
+                ticket["issue_description"],
+                ticket["channel"],
+                ticket["customer_tier"],
+                ticket["created_at"],
+                ticket["category"],
+                ticket["urgency"],
+                ticket["assigned_team"],
+                ticket["language"],
+                ticket["resolution_status"]
+            )
+        )
 
-    if not TICKETS_FILE.exists():
-        save_tickets([])
+        saved_ticket = cursor.fetchone()
 
-    with open(TICKETS_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
+        conn.commit()
 
+        result = dict(saved_ticket)
+        # The database column is named ``body`` while the API uses
+        # ``issue_description``.
+        result["issue_description"] = result.pop("body", ticket["issue_description"])
+        # Some existing table definitions do not have an ``updated_at``
+        # column. Keep the API response complete using the creation time.
+        if result.get("updated_at") is None:
+            result["updated_at"] = ticket["updated_at"]
+        return result
 
-def save_tickets(tickets):
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Database error: {e}")
 
-    temp_file = TICKETS_FILE.with_suffix(".tmp")
-
-    with open(temp_file, "w", encoding="utf-8") as file:
-        json.dump(tickets, file, indent=4, ensure_ascii=False)
-
-    temp_file.replace(TICKETS_FILE)
-
-
-def get_next_ticket_id(tickets):
-    if not tickets:
-        return 1001
-
-    return max(ticket["ticket_id"] for ticket in tickets) + 1
-
-
-def add_ticket(ticket):
-    with _file_lock:
-        tickets = load_tickets()
-
-        ticket["ticket_id"] = get_next_ticket_id(tickets)
-
-        tickets.append(ticket)
-        save_tickets(tickets)
-
-        return ticket
-
-
-def get_all_tickets():
-    with _file_lock:
-        return load_tickets()
-
-
-def get_ticket_by_id(ticket_id):
-    with _file_lock:
-        tickets = load_tickets()
-
-        for ticket in tickets:
-            if ticket["ticket_id"] == ticket_id:
-                return ticket
-
-    return None
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

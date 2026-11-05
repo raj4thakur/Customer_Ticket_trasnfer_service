@@ -4,7 +4,7 @@ from app.model_loader import load_artifacts
 from app.predictor import predict_ticket
 from app.decision_enginer import transfer_to_team
 from datetime import datetime, timezone
-from app.ticket_storage import add_ticket,get_all_tickets,get_ticket_by_id
+from app.ticket_storage import add_ticket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -37,8 +37,6 @@ async def create_ticket(ticket: TicketCreate):
         print(f"catergory:{prediction['category']}, Confidence:{prediction['category_confidence']}")
         print(f"Urgency:{prediction['urgency']}, Confidence:{prediction['urgency_confidence']}")
         new_ticket = {
-           "ticket_id": 1,
-              "customer_id": ticket.customer_id,
                 "channel": ticket.channel,
                 "subject": ticket.subject,
                 "issue_description": ticket.issue_description,
@@ -54,22 +52,3 @@ async def create_ticket(ticket: TicketCreate):
         return saved_ticket
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ticket creation failed: {str(e)}")
-
-    
-@app.get("/tickets/",response_model=list[TicketResponse])
-async def list_tickets():
-    try:
-        tickets = get_all_tickets()
-        return tickets
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve tickets: {str(e)}")
-
-@app.get("/tickets/{ticket_id}",response_model=TicketResponse)
-async def get_ticket(ticket_id: int):
-    try:
-        ticket = get_ticket_by_id(ticket_id)
-        if ticket is None:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        return ticket
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve ticket: {str(e)}")
